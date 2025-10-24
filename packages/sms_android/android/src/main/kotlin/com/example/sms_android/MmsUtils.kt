@@ -6,8 +6,6 @@ import android.database.Cursor
 import android.net.Uri
 import android.provider.Telephony
 import android.util.Log
-import java.io.BufferedReader
-import java.io.InputStreamReader
 
 /**
  * Shared helpers for reading MMS content from the telephony provider.
@@ -106,64 +104,34 @@ object MmsUtils {
     }
 
     private fun loadParts(context: Context, mmsId: Long): List<MmsPart> {
-        val projection = arrayOf(
-            Telephony.Mms.Part._ID,
-            Telephony.Mms.Part.CONTENT_TYPE,
-            Telephony.Mms.Part.TEXT,
-            Telephony.Mms.Part._DATA,
-            Telephony.Mms.Part.NAME,
-            Telephony.Mms.Part.FILENAME,
-            Telephony.Mms.Part._SIZE
-        )
-        val selection = "${Telephony.Mms.Part.MSG_ID}=?"
-        val selectionArgs = arrayOf(mmsId.toString())
+        val partUri = Uri.parse("content://mms/$mmsId/part")
+        val projection = arrayOf("_id", "ct", "text", "_data", "name", "fn", "_size")
         val parts = mutableListOf<MmsPart>()
-
-        var cursor = context.contentResolver.query(
-            Telephony.Mms.Part.CONTENT_URI,
-            projection,
-            selection,
-            selectionArgs,
-            null
-        )
-
-        if (cursor == null) {
-            // Some devices restrict the direct part table query; fall back to the legacy per-MMS URI.
-            val partUri = Uri.parse("content://mms/$mmsId/part")
-            cursor = context.contentResolver.query(partUri, projection, null, null, null)
-        }
-
+        val cursor = context.contentResolver.query(partUri, projection, null, null, null)
         cursor.useSafely { c ->
             if (c != null) {
                 while (c.moveToNext()) {
-                    val id = c.getLong(c.getColumnIndexOrThrow(Telephony.Mms.Part._ID))
-                    val type = c.getString(c.getColumnIndexOrThrow(Telephony.Mms.Part.CONTENT_TYPE))
-                    val rawText = try {
-                        c.getString(c.getColumnIndexOrThrow(Telephony.Mms.Part.TEXT))
+                    val id = c.getLong(c.getColumnIndexOrThrow("_id"))
+                    val type = c.getString(c.getColumnIndexOrThrow("ct"))
+                    val text = try {
+                        c.getString(c.getColumnIndexOrThrow("text"))
                     } catch (_: Exception) {
                         null
                     }
                     val dataPath = try {
-                        c.getString(c.getColumnIndexOrThrow(Telephony.Mms.Part._DATA))
+                        c.getString(c.getColumnIndexOrThrow("_data"))
                     } catch (_: Exception) {
                         null
                     }
                     val fileName = try {
-                        c.getString(c.getColumnIndexOrThrow(Telephony.Mms.Part.NAME))
-                            ?: c.getString(c.getColumnIndexOrThrow(Telephony.Mms.Part.FILENAME))
+                        c.getString(c.getColumnIndexOrThrow("name")) ?: c.getString(c.getColumnIndexOrThrow("fn"))
                     } catch (_: Exception) {
                         null
                     }
                     val size = try {
-                        c.getLong(c.getColumnIndexOrThrow(Telephony.Mms.Part._SIZE))
+                        c.getLong(c.getColumnIndexOrThrow("_size"))
                     } catch (_: Exception) {
                         null
-                    }
-
-                    val text = when {
-                        !rawText.isNullOrEmpty() -> rawText
-                        type.equals("text/plain", ignoreCase = true) -> loadTextFromPart(context, id)
-                        else -> null
                     }
 
                     parts.add(MmsPart(id, type, text, dataPath, fileName, size))
@@ -172,18 +140,6 @@ object MmsUtils {
         }
         Log.d(TAG, "Resolved ${parts.size} parts for MMS $mmsId")
         return parts
-    }
-
-    private fun loadTextFromPart(context: Context, partId: Long): String? {
-        return try {
-            val uri = ContentUris.withAppendedId(Telephony.Mms.Part.CONTENT_URI, partId)
-            context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                BufferedReader(InputStreamReader(inputStream)).use(BufferedReader::readText)
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to load text for part $partId", e)
-            null
-        }
     }
 
     private inline fun Cursor?.useSafely(block: (Cursor?) -> Unit) {
