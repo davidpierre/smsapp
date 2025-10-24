@@ -1,0 +1,21 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- MMS Sent Receiver - Updates database when MMS is sent -->
+        <receiver
+            android:name=".MmsSentReceiverImpl"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.klinker.android.messaging.MMS_SENT" />
+            </intent-filter>
+        </receiver>
+
+        <!-- SMS/MMS Sent Receiver - Updates database when SMS is sent -->
+        <receiver
+            android:name=".SentReceiverImpl"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.klinker.android.messaging.SMS_SENT" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>
