@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Allow cleartext (HTTP) traffic for MMS servers -->
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- AT&T MMS servers use various IP addresses -->
+        <domain includeSubdomains="true">107.0.0.0</domain>
+        <!-- Allow all carrier MMS servers (they use IP addresses, not domains) -->
+    </domain-config>
+    
+    <!-- Global setting to allow cleartext for all domains -->
+    <!-- This is necessary because MMS servers use dynamic IP addresses -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
+
